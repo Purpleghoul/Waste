@@ -23,67 +23,160 @@ const skipImages: Record<number, string> = {
   40: 'https://yozbrydxdlcxghkphhtq.supabase.co/storage/v1/object/public/skips/skip-sizes/40-yarder-skip.jpg',
 }
 
+function SkipIcon() {
+  return (
+    <svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="2" y="10" width="44" height="16" rx="3" fill="#26A69A"/>
+      <rect x="8" y="6" width="32" height="8" rx="2" fill="#B2DFDB"/>
+      <rect x="14" y="2" width="20" height="6" rx="1.5" fill="#26A69A"/>
+    </svg>
+  )
+}
+
 export default function App() {
   const [step, setStep] = useState(2)
-  const [selectedSkip, setSelectedSkip] = useState<number | null>(null)
   const [skips, setSkips] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const [selected, setSelected] = useState<number[]>([])
+  const [sizeFilter, setSizeFilter] = useState('')
+  const [roadFilter, setRoadFilter] = useState('')
 
   useEffect(() => {
     fetch('https://app.wewantwaste.co.uk/api/skips/by-location?postcode=NR32&area=Lowestoft')
       .then(r => r.json())
-      .then(data => {
-        setSkips(data)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+      .then(data => setSkips(data))
+      .finally(() => setLoading(false))
   }, [])
 
+  const uniqueSizes = Array.from(new Set(skips.map(s => s.size))).sort((a, b) => a - b)
+  const filteredSkips = skips.filter(skip => {
+    const sizeMatch = sizeFilter ? skip.size === Number(sizeFilter) : true
+    const roadMatch = roadFilter ? (roadFilter === 'yes' ? skip.allowed_on_road : !skip.allowed_on_road) : true
+    return sizeMatch && roadMatch
+  })
+
   return (
-    <div className="waste-app-light">
-      <div className="stepper">
-        {steps.map((s, i) => (
-          <div key={s.label} className={`step${i === step ? ' active' : ''}${!s.enabled ? ' disabled' : ''}`}> 
-            <span className="step-icon">{i + 1}</span>
-            <span className="step-label">{s.label}</span>
-            {i < steps.length - 1 && <span className="step-divider" />}
+    <div className="app-flex">
+      <aside className="sidebar-stepper">
+        <div className="stepper-vertical">
+          {steps.map((s, i) => (
+            <div key={s.label} className={`stepper-circle${i === step ? ' active' : ''}${!s.enabled ? ' disabled' : ''}${s.enabled && i < step ? ' completed' : ''}`}> 
+              <span className="circle-num">{i + 1}</span>
+              <span className="circle-label">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
+      <main className="main-content-list">
+        <header className="header-gradient">
+          <h2 className="skip-title poppins">Choose Your Skip Size</h2>
+          <p className="skip-desc poppins">Select the skip size that best suits your needs</p>
+          <div className="skip-filter-bar">
+            <select value={sizeFilter} onChange={e => setSizeFilter(e.target.value)} className="skip-filter-select">
+              <option value="">All Sizes</option>
+              {uniqueSizes.map(size => (
+                <option key={size} value={size}>{size} Yards</option>
+              ))}
+            </select>
+            <select value={roadFilter} onChange={e => setRoadFilter(e.target.value)} className="skip-filter-select">
+              <option value="">All Locations</option>
+              <option value="yes">Allowed on Road</option>
+              <option value="no">Not Allowed on Road</option>
+            </select>
           </div>
-        ))}
-      </div>
-      <div className="skip-select-block">
-        <h2 className="skip-title">Choose Your Skip Size</h2>
-        <p className="skip-desc">Select the skip size that best suits your needs</p>
+        </header>
         {loading ? (
           <div className="skip-loading">Loading skips...</div>
         ) : (
-          <div className="skip-grid">
-            {skips.map((skip, idx) => (
-              <div
+          <ul className="skip-list" role="listbox" aria-label="Skip container list">
+            {filteredSkips.map((skip, idx) => (
+              <li
                 key={skip.id || skip.size}
-                className={`skip-card${selectedSkip === idx ? ' selected' : ''}`}
-                onClick={() => setSelectedSkip(idx)}
+                className={`skip-list-item${selected.includes(idx) ? ' selected' : ''}`}
+                aria-selected={selected.includes(idx)}
               >
-                <div className="skip-img-wrap">
-                  <img src={skipImages[skip.size] || skip.imageUrl} alt={skip.name || `${skip.size} Yard Skip`} className="skip-img" />
-                  <div className="skip-size-badge">{skip.size} Yards</div>
-                  {!skip.allowed_on_road && (
-                    <div className="skip-warning">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                      <span>Not Allowed On The Road</span>
+                <div className="skip-list-row">
+                  <span className="skip-list-icon">
+                    <img
+                      src={skipImages[skip.size] || ''}
+                      alt={skip.size + ' yard skip'}
+                      width={72}
+                      height={48}
+                      style={{ borderRadius: 10, objectFit: 'cover', background: '#e0f7fa' }}
+                    />
+                  </span>
+                  <button
+                    className="skip-list-main"
+                    aria-expanded={expanded === idx}
+                    aria-controls={`skip-details-${idx}`}
+                    onClick={() => setExpanded(expanded === idx ? null : idx)}
+                  >
+                    <span className="skip-list-info">
+                      <span className="skip-list-size poppins">{skip.size} Yard Skip</span>
+                      <span className="skip-list-period">{skip.hire_period_days} days</span>
+                      <span className="skip-list-price">£{skip.price_before_vat}</span>
+                    </span>
+                    <span className="skip-list-expand" aria-label="Expand details">{expanded === idx ? '▲' : '▼'}</span>
+                  </button>
+                  <button
+                    className="skip-list-select"
+                    aria-label={`Select or deselect ${skip.size} yard skip`}
+                    onClick={() => {
+                      setSelected(selected =>
+                        selected.includes(idx)
+                          ? selected.filter(i => i !== idx)
+                          : [...selected, idx]
+                      )
+                    }}
+                  >
+                    {selected.includes(idx) ? <span className="skip-list-check">✔</span> : 'Select'}
+                  </button>
+                </div>
+                {expanded === idx && (
+                  <div className="skip-list-details" id={`skip-details-${idx}`}>
+                    <div className="skip-list-detail-row">
+                      <span className="skip-list-detail-label">Allowed on Road:</span>
+                      <span>{skip.allowed_on_road ? 'Yes' : 'No'}</span>
                     </div>
-                  )}
-                </div>
-                <div className="skip-info">
-                  <div className="skip-name">{skip.name || `${skip.size} Yard Skip`}</div>
-                  <div className="skip-period">{skip.hire_period_days} day hire period</div>
-                  <div className="skip-price">£{skip.price_before_vat}</div>
-                  <button className="skip-btn">Select This Skip</button>
-                </div>
-              </div>
+                    <div className="skip-list-detail-row">
+                      <span className="skip-list-detail-label">Eco-Friendly:</span>
+                      <span>Recyclable Materials Supported</span>
+                    </div>
+                    <div className="skip-list-detail-row">
+                      <span className="skip-list-detail-label">VAT:</span>
+                      <span>{skip.vat}%</span>
+                    </div>
+                    <div className="skip-list-detail-row">
+                      <span className="skip-list-detail-label">Postcode:</span>
+                      <span>{skip.postcode}</span>
+                    </div>
+                  </div>
+                )}
+              </li>
             ))}
+          </ul>
+        )}
+      </main>
+      <aside className="summary-panel">
+        {selected.length > 0 && (
+          <div className="summary-box">
+            <div className="summary-box-inner">
+              <div className="summary-title poppins">Selected Skips</div>
+              {selected.map(selIdx => (
+                filteredSkips[selIdx] && (
+                  <div key={selIdx} style={{marginBottom: 12}}>
+                    <div className="summary-row"><span>Size:</span> <span>{filteredSkips[selIdx].size} Yards</span></div>
+                    <div className="summary-row"><span>Hire Period:</span> <span>{filteredSkips[selIdx].hire_period_days} days</span></div>
+                    <div className="summary-row"><span>Price:</span> <span>£{filteredSkips[selIdx].price_before_vat}</span></div>
+                    <div className="summary-row"><span>Eco:</span> <span>Recyclable Materials Supported</span></div>
+                  </div>
+                )
+              ))}
+            </div>
           </div>
         )}
-      </div>
+      </aside>
     </div>
   )
 } 
