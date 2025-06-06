@@ -1,0 +1,12 @@
+{
+  "template": "node",
+  "container": {
+    "node": "18"
+  },
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "sandbox": {
+    "startCommand": "npm run dev"
+  }
+} 
