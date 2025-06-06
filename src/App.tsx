@@ -41,6 +41,14 @@ export default function App() {
   const [selected, setSelected] = useState<number[]>([])
   const [sizeFilter, setSizeFilter] = useState('')
   const [roadFilter, setRoadFilter] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.matchMedia('(max-width: 600px)').matches)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     fetch('https://app.wewantwaste.co.uk/api/skips/by-location?postcode=NR32&area=Lowestoft')
@@ -58,16 +66,18 @@ export default function App() {
 
   return (
     <div className="app-flex">
-      <aside className="sidebar-stepper">
-        <div className="stepper-vertical">
-          {steps.map((s, i) => (
-            <div key={s.label} className={`stepper-circle${i === step ? ' active' : ''}${!s.enabled ? ' disabled' : ''}${s.enabled && i < step ? ' completed' : ''}`}> 
-              <span className="circle-num">{i + 1}</span>
-              <span className="circle-label">{s.label}</span>
-            </div>
-          ))}
-        </div>
-      </aside>
+      {!isMobile && (
+        <aside className="sidebar-stepper">
+          <div className="stepper-vertical">
+            {steps.map((s, i) => (
+              <div key={s.label} className={`stepper-circle${i === step ? ' active' : ''}${!s.enabled ? ' disabled' : ''}${s.enabled && i < step ? ' completed' : ''}`}> 
+                <span className="circle-num">{i + 1}</span>
+                <span className="circle-label">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      )}
       <main className="main-content-list">
         <header className="header-gradient">
           <h2 className="skip-title poppins">Choose Your Skip Size</h2>
@@ -114,7 +124,7 @@ export default function App() {
                   >
                     <span className="skip-list-info">
                       <span className="skip-list-size poppins">{skip.size} Yard Skip</span>
-                      <span className="skip-list-period">{skip.hire_period_days} days</span>
+                      <span className="skip-list-period">{skip.hire_period_days} days hire period</span>
                       <span className="skip-list-price">£{skip.price_before_vat}</span>
                     </span>
                     <span className="skip-list-expand" aria-label="Expand details">{expanded === idx ? '▲' : '▼'}</span>
